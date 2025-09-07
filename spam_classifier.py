@@ -13,7 +13,7 @@ from sklearn.naive_bayes import MultinomialNB
 
 # nltk.download("stopwords")
 
-messages = pd.read_csv("sms_spam_collection/SMSSpamCollection", sep="\t", names=["label", "message"])
+messages = pd.read_csv("data/sms_spam_collection/SMSSpamCollection", sep="\t", names=["label", "message"])
 
 
 stemmer = PorterStemmer()
