@@ -1,0 +1,5 @@
+# Editor
+.vscode/
+
+# Virtual environment
+.NLP_venv/
