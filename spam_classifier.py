@@ -18,11 +18,11 @@ messages = pd.read_csv("data/sms_spam_collection/SMSSpamCollection", sep="\t", n
 
 stemmer = PorterStemmer()
 stemmedSentences = []
-
+stopWords = set(stopwords.words("english"))
 for i in range(len(messages)):
     cleanedWords = re.sub("[^a-zA-Z]", " ", messages["message"][i])
     words = word_tokenize(cleanedWords)
-    stemmedWords = [stemmer.stem(word.lower()) for word in words if word not in stopwords.words("english")]
+    stemmedWords = [stemmer.stem(word.lower()) for word in words if word not in stopWords]
     stemmedSentences.append(" ".join(stemmedWords))
 
 # BagOfWords
