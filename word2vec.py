@@ -1,33 +1,63 @@
 import re
 
+import gensim.downloader as api
 import nltk
+import numpy as np
+import pandas as pd
 from gensim.models import Word2Vec
+from gensim.utils import simple_preprocess
 from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import sent_tokenize, word_tokenize
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (accuracy_score, classification_report,
+                             confusion_matrix)
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
-paragraph = """Tokenization in Natural Language Processing (NLP) is the process of breaking down text into smaller, meaningful units called tokens.
-These tokens can be as small as characters, as large as sentences, but most often they are words or subwords.
-Tokenization is a crucial first step in many NLP tasks because computers process text as structured data rather than free-flowing language.
-Word-level tokenization is intuitive but struggles with rare or unknown words, which is why modern NLP models often rely on subword tokenization techniques such as Byte Pair Encoding (BPE) or WordPiece.
-By transforming text into tokens, NLP systems can better analyze, interpret, and model human language for applications like translation, chatbots, and search engines."""
+wordVector = api.load("word2vec-google-news-300")
+
+messages = pd.read_csv("data/sms_spam_collection/SMSSpamCollection", sep="\t", names=["label", "message"])
+
+words = []
+for i in range(len(messages)):
+    sentences = sent_tokenize(messages["message"][i])
+    for sentence in sentences:
+        words.append(simple_preprocess(sentence))
+
+model =wordVector
+vocabs = model.key_to_index
 
 
-cleanedParagraph = re.sub("[^a-zA-Z]", " ", paragraph.lower())
-sentences = sent_tokenize(cleanedParagraph)
-words = [word_tokenize(sentence) for sentence in sentences]
+def avgWord2Vec(doc):
+    validWords = [model[word] for word in doc if word in vocabs]
+    if not validWords:
+        return np.zeros(model.vector_size)
+    return np.mean(validWords, axis=0)
 
-cleanedWords = []
+X = []
+for i in tqdm(range(len(messages))):
+    sentences = sent_tokenize(messages["message"][i])
+    sentenceVecs = [avgWord2Vec(simple_preprocess(s)) for s in sentences]
+    X.append(np.mean(sentenceVecs, axis=0))
 
-for i in range(len(words)):
-    cleanedWords.append([word for word in words[i] if word not in stopwords.words("english")])
+data = np.array(X)
+print(data.shape)
+labels = pd.get_dummies(messages["label"])
+labels = labels.iloc[:,1].values
 
-# Training the word2vec model
-model = Word2Vec(cleanedWords, min_count=1)
+df = pd.DataFrame(data)
+trainX, testX, trainY, testY = train_test_split(df, labels, test_size=0.2)
 
-vocabs = model.wv.key_to_index
-print("vocabs", vocabs)
-# Finding vectors for a given word
-vectors = model.wv["language"]
-# Finding similar words to a given word.
-similarWords = model.wv.most_similar("language")
-print("similar words: ", similarWords)
+
+classifier = RandomForestClassifier()
+classifier.fit(trainX, trainY)
+pred = classifier.predict(testX)
+
+
+accuracy = accuracy_score(testY, pred)
+confusionMatrix = confusion_matrix(testY, pred)
+classificationReport = classification_report(testY, pred)
+print("accuracy: ", accuracy)
+print("confusion matrix: ", confusionMatrix)
+print("classification report: ", classificationReport)
